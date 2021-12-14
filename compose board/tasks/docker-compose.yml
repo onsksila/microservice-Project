@@ -1,0 +1,92 @@
+version: "3.6"
+services:
+ discovery:
+  build: ../../Discovery-server
+  ports:
+   - "8761:8761"
+  image: "discovery-service"
+ config:
+    build: ../../config-server
+    command: --spring.profiles.active=native --spring.cloud.config.server.native.searchLocations=/config
+    volumes:
+      - type: bind
+        source: ./src/main/resources/centralRepo
+        target: /config
+    environment: 
+      - eureka.client.serviceUrl.defaultZone=http://discovery:8761/eureka/
+      - spring.profiles.active=native
+    ports:
+      - "8888:8888"
+    image: "config-server"
+ Employe:
+  build: ../../Employe
+  environment:
+   - eureka.client.serviceUrl.defaultZone=http://discovery:8761/eureka/
+  ports:
+   - "8111:8111"
+  image: "employe-service"
+  depends_on:
+   - discovery
+ Fournisseur:
+  build: ../../Fournisseur
+  environment:
+   - eureka.client.serviceUrl.defaultZone=http://discovery:8761/eureka/
+  ports:
+   - "8222:8222"
+  image: "fournisseur-service"
+  depends_on:
+   - discovery
+ Reservation:
+  build: ../../Reservation
+  environment:
+   - eureka.client.serviceUrl.defaultZone=http://discovery:8761/eureka/
+  ports:
+   - "8333:8333"
+  image: "reservation-service"
+  depends_on:
+   - discovery
+ Produit:
+  build: ../../Produit
+  environment:
+   - eureka.client.serviceUrl.defaultZone=http://discovery:8761/eureka/
+  ports:
+   - "8444:8444"
+  image: "produit-service"
+  depends_on:
+   - mysqldb
+   - discovery
+ mysqldb:
+   image: mysql:8.0.25
+   environment:
+      - MYSQL_ROOT_PASSWORD=
+      - MYSQL_DATABASE=Produit
+      - MYSQL_USER=test
+      - MYSQL_PASSWORD=
+      - MYSQL_ALLOW_EMPTY_PASSWORD=true
+   ports:
+      - "3306:3306"
+ app:
+    container_name: nodejs-mongo-docker
+    restart: always
+    build: ../../RDV
+    ports:
+      - '8555:8555'
+    environment: 
+     - eureka.client.serviceUrl.defaultZone=http://discovery:8761/eureka/
+    depends_on:
+      - discovery
+      - mongo
+ mongo:
+    container_name: mongo
+    image: mongo
+    ports:
+      - '27017:27017'
+ gateway:
+   build: ../../Zuul-Gateway
+   environment: 
+     - eureka.client.serviceUrl.defaultZone=http://discovery:8761/eureka/
+   ports:
+     - "8762:8762"
+   image: "gateway-server"
+   depends_on:
+     - discovery
